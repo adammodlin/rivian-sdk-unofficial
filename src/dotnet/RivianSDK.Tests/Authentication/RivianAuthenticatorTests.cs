@@ -5,6 +5,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using GraphQL.Client.Serializer.SystemTextJson;
 using Microsoft.Extensions.Configuration;
 using GraphQL.Client.Http;
+using Microsoft.Extensions.Configuration.EnvironmentVariables;
 
 namespace RivianSDK.Tests;
 
@@ -18,12 +19,15 @@ public class RivianAuthenticatorTests
 
     public RivianAuthenticatorTests()
     {
-        var builder = new ConfigurationBuilder().AddJsonFile("appsettings.json").AddUserSecrets<RivianAuthenticatorTests>();
+        var builder = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json")
+            .AddUserSecrets<RivianAuthenticatorTests>()
+            .AddEnvironmentVariables(); //Needed to load in Github actions secrets for integration test
         _configuration = builder.Build();
 
         _authenticationUri = new Uri(_configuration["Uris:Authentication"]);
-        _email = _configuration["Email"];
-        _password = _configuration["Password"];
+        _email = _configuration["EMAIL"];
+        _password = _configuration["PASSWORD"];
 
     }
 
