@@ -27,4 +27,7 @@ jobs:
     - name: Build
       run: dotnet build --no-restore
     - name: Test
+      env:
+        EMAIL: ${{ secrets.EMAIL }}
+        PASSWORD: ${{ secrets.PASSWORD }}
       run: dotnet test --no-build --verbosity normal
