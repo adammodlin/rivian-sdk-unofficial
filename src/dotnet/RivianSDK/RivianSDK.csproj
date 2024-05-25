@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Account/" />
     <Folder Include="Charging/" />
     <Folder Include="Orders/" />
     <Folder Include="Payments/" />

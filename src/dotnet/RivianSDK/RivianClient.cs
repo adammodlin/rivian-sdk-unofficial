@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using System.Net;
 using System.Runtime.InteropServices.Marshalling;
 using System.Security;
 using GraphQL;
@@ -9,7 +10,7 @@ using GraphQL.NewtonsoftJson;
 
 namespace RivianSDK;
 
-public class RivianClient : IDisposable
+public class RivianClient : IRivianClient, IDisposable
 {
     private string _email;
     private string _password;
@@ -60,16 +61,37 @@ public class RivianClient : IDisposable
         return response.Data.CreateCsrfToken;
     }
 
-    public async Task<bool> Authenticate()
+    public async Task<CurrentUserResponseContent> GetCurrentUser(string csrfToken, string userSessionToken, CancellationToken cancellationToken = default)
     {
-        var csrfToken = await CreateCSRFTokenAsync();
-        var loginResponse = await RequestAccessTokenAsync(_email, _password, csrfToken);
+        var query = "query CurrentUserForLogin { currentUser { __typename ...CurrentUserFields } }  fragment CurrentUserFields on User { id settings { distanceUnit { value timestamp } temperatureUnit { value timestamp } } firstName lastName email address { country } vehicles { id owner roles vin vas { vasVehicleId vehiclePublicKey } vehicle { deviceSlots { phone { max free } } model mobileConfiguration { trimOption { optionId optionName } exteriorColorOption { optionId optionName } interiorColorOption { optionId optionName } driveSystemOption { optionId optionName } tonneauOption { optionId optionName } wheelOption { optionId optionName } driveSystemTowingDriveModes driveSystemDriveModes maxVehiclePower } maintenanceSchedule { sections { items { description isDue } serviceLifetime { __typename ... on MaintenanceDistanceLimit { km mi } ... on MaintenanceDateLimit { year } } } } } settings { name { value } } } enrolledPhones { vas { vasPhoneId publicKey } enrolled { deviceType deviceName vehicleId identityId shortName } } pendingInvites { id invitedByFirstName role status vehicleId vehicleModel email } }";
+        
+        var operationName = "CurrentUserForLogin";
+        var headers = new Dictionary<string, string>
+            {
+                //{ "A-Sess", $"{appSessionToken}" },
+                { "U-Sess", $"{userSessionToken}" },
+                { "Csrf-Token", $"{csrfToken}" },
+                { "Apollographql-Client-Name", "com.rivian.ios.consumer-apollo-ios" },
+                { "User-Agent", "RivianApp/707 CFNetwork/1237 Darwin/20.4.0"},
+                { "Dc-Cid", $"m-ios-{{{Guid.NewGuid()}}}"},
+                { "Accept", "application/json"}
+            };
+       
+        var request = new GraphQLHttpRequestWithHeadersSupport {Headers = headers, Query = query, OperationName = operationName };
 
-        return true;
+        var response = (GraphQLHttpResponse<CurrentUserResponse>)await _client.SendQueryAsync<CurrentUserResponse>(request, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.OK){
+            return response.Data.CurrentUser;
+        }
+        else {
+            throw RivianExceptionFactory.CreateExceptionFromResponse(response);
+        }
     }
+
 
     public void Dispose()
     {
         _client.Dispose();
     }
+
 }
